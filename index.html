@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artemis II Orion Integrity Free-Return Trajectory Visualizer</title>
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <!-- WebGL Render Canvas Slot -->
+  <div id="canvas-container"></div>
+
+  <!-- Play/Pause Overlay indicator -->
+  <div id="center-play-overlay">⏸</div>
+
+  <!-- HUD Top Header -->
+  <header id="hud-header" class="hud-panel">
+    <div class="header-title">
+      ARTEMIS II <span>/</span> ORION INTEGRITY <span>/</span> FREE-RETURN VISUALIZER
+    </div>
+    <div class="header-badge">NASA/JPL HORIZONS</div>
+  </header>
+
+  <!-- Left Sidebar (Telemetry & Graphs) -->
+  <aside id="left-container" style="position: absolute; top: 88px; left: 20px; z-index: 10;">
+    <!-- Telemetry Panel -->
+    <section id="panel-telemetry" class="hud-panel" style="position: static; width: 100%;">
+      <div class="met-label">Mission Elapsed Time (MET)</div>
+      <div class="met-val" id="telemetry-met">T+0/00:00:00</div>
+      <div class="utc-val" id="telemetry-utc">2026-04-02 01:58:32 UTC</div>
+      
+      <div class="telemetry-row">
+        <span class="telemetry-label">Earth Range</span>
+        <span class="telemetry-val"><span id="telemetry-earth-range">0</span><span class="telemetry-unit">km</span></span>
+      </div>
+      <div class="telemetry-row">
+        <span class="telemetry-label">Moon Range</span>
+        <span class="telemetry-val"><span id="telemetry-moon-range">0</span><span class="telemetry-unit">km</span></span>
+      </div>
+      
+      <div class="phase-highlight">
+        <div class="met-label">Phase</div>
+        <div class="telemetry-val" id="telemetry-phase">Initializing</div>
+      </div>
+    </section>
+
+    <!-- Current Event Panel -->
+    <section id="panel-event" class="hud-panel" style="position: static; width: 100%;">
+      <h2 class="panel-title">Current Event</h2>
+      <div class="event-title" id="event-title">Translunar Coast</div>
+      <p class="event-desc" id="event-desc">
+        Orion is in the outbound translunar coast phase, heading towards the Moon after a successful Translunar Injection (TLI) burn.
+      </p>
+    </section>
+
+    <!-- Charts Panel -->
+    <section id="panel-charts" class="hud-panel" style="position: static; width: 100%;">
+      <h2 class="panel-title">Real-Time Dynamics</h2>
+      
+      <!-- Velocity Chart -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <span class="chart-title">Velocity</span>
+          <span class="chart-value"><span id="chart-val-velocity">0.00</span><span class="telemetry-unit">km/s</span></span>
+        </div>
+        <canvas id="chart-velocity" class="chart-canvas" height="50"></canvas>
+      </div>
+
+      <!-- Earth Range Chart -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <span class="chart-title">Earth Range</span>
+          <span class="chart-value"><span id="chart-val-earth">0</span><span class="telemetry-unit">km</span></span>
+        </div>
+        <canvas id="chart-earth" class="chart-canvas" height="50"></canvas>
+      </div>
+
+      <!-- Moon Range Chart -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <span class="chart-title">Moon Range</span>
+          <span class="chart-value"><span id="chart-val-moon">0</span><span class="telemetry-unit">km</span></span>
+        </div>
+        <canvas id="chart-moon" class="chart-canvas" height="50"></canvas>
+      </div>
+    </section>
+  </aside>
+
+  <!-- Right Sidebar (Overview Map, Guidance, Queue) -->
+  <aside id="right-container" style="position: absolute; top: 88px; right: 20px; z-index: 10;">
+    <!-- 2D Overview Map Panel -->
+    <section id="panel-overview-map" class="hud-panel" style="position: static; width: 100%;">
+      <h2 class="panel-title">Free-Return Overview</h2>
+      <div class="map-svg-container">
+        <svg id="overview-map-svg" width="100%" height="100%" viewBox="0 0 250 140" style="background:#02050f;">
+          <!-- Grid Background lines -->
+          <line x1="0" y1="70" x2="250" y2="70" stroke="rgba(0,136,255,0.06)" stroke-width="1" />
+          <circle cx="125" cy="70" r="40" fill="none" stroke="rgba(0,136,255,0.04)" stroke-width="1" />
+          <circle cx="125" cy="70" r="80" fill="none" stroke="rgba(0,136,255,0.04)" stroke-width="1" />
+          <!-- Earth and Moon shapes -->
+          <circle id="map-earth" cx="50" cy="70" r="10" fill="#00bbff" opacity="0.9" />
+          <circle id="map-moon" cx="200" cy="70" r="4" fill="#aab" opacity="0.8" />
+          <!-- Labels -->
+          <text x="50" y="55" font-family="'Space Grotesk', sans-serif" font-size="8" fill="rgba(255,255,255,0.7)" text-anchor="middle">EARTH</text>
+          <text x="200" y="58" font-family="'Space Grotesk', sans-serif" font-size="8" fill="rgba(255,255,255,0.7)" text-anchor="middle">MOON</text>
+          <!-- Orbits paths -->
+          <path id="map-trajectory" d="" fill="none" stroke="rgba(0, 212, 255, 0.4)" stroke-width="1.5" stroke-dasharray="2,2" />
+          <path id="map-trajectory-active" d="" fill="none" stroke="var(--accent-cyan)" stroke-width="2" />
+          <!-- Spacecraft Marker -->
+          <circle id="map-orion" cx="0" cy="0" r="3" fill="#ff8844" />
+          <circle id="map-orion-glow" cx="0" cy="0" r="6" fill="none" stroke="#ff8844" stroke-width="1" opacity="0.8" />
+        </svg>
+      </div>
+    </section>
+
+    <!-- Guidance Status Panel -->
+    <section id="panel-guidance" class="hud-panel" style="position: static; width: 100%;">
+      <h2 class="panel-title">Guidance</h2>
+      <div class="event-title">Actual JPL State Vectors</div>
+      
+      <div class="telemetry-row" style="margin-top: 10px;">
+        <span class="telemetry-label">Vector Frame</span>
+        <span class="telemetry-val" style="color: var(--accent-cyan);">ICRF</span>
+      </div>
+      <div class="telemetry-row">
+        <span class="telemetry-label">Interpolation</span>
+        <span class="telemetry-val" style="color: var(--accent-cyan);">Hermite</span>
+      </div>
+      <div class="telemetry-row">
+        <span class="telemetry-label">Moon PC</span>
+        <span class="telemetry-val" style="color: var(--accent-gold);">8,282 km center</span>
+      </div>
+      <div class="telemetry-row">
+        <span class="telemetry-label">Max Earth</span>
+        <span class="telemetry-val" style="color: var(--text-primary);">413,146 km</span>
+      </div>
+    </section>
+
+    <!-- Mission Queue Panel -->
+    <section id="panel-queue" class="hud-panel" style="position: static; width: 100%;">
+      <h2 class="panel-title">Mission Queue / Phase Log</h2>
+      <div class="queue-list" id="queue-list">
+        <!-- Will be dynamically populated -->
+      </div>
+    </section>
+  </aside>
+
+  <!-- Bottom Panel (Controls & Timeline) -->
+  <footer id="hud-playback" class="hud-panel">
+    <div class="playback-controls-row">
+      <div class="playback-left">
+        <div class="playback-met" id="hud-met-label">MET T+0/00:00:00</div>
+        
+        <div class="playback-buttons">
+          <button class="playback-btn play-toggle" id="btn-play">Pause</button>
+          <button class="playback-btn" id="btn-reset">Reset</button>
+        </div>
+
+        <div class="playback-buttons" id="speed-container">
+          <button class="playback-btn speed-btn" data-speed="1">1x</button>
+          <button class="playback-btn speed-btn active" data-speed="1000">1K×</button>
+          <button class="playback-btn speed-btn" data-speed="5000">5K×</button>
+          <button class="playback-btn speed-btn" data-speed="10000">10K×</button>
+        </div>
+      </div>
+
+      <div class="playback-left">
+        <!-- View selection dropdown -->
+        <select class="playback-select" id="select-view">
+          <option value="overview">Full Free Return</option>
+          <option value="follow">Orion Focus</option>
+          <option value="earth">Earth Focus</option>
+          <option value="moon">Moon Focus</option>
+        </select>
+
+        <!-- True Scale Checkbox -->
+        <label class="checkbox-container">
+          <input type="checkbox" id="check-true-scale">
+          <span class="checkbox-custom"></span>
+          True scale
+        </label>
+      </div>
+    </div>
+
+    <!-- Timeline Slider -->
+    <div class="slider-container">
+      <div class="timeline-slider-wrapper">
+        <div class="timeline-bg-track"></div>
+        <div class="timeline-fill-track" id="timeline-fill"></div>
+        <input type="range" class="timeline-scrubber" id="timeline-range" min="0" max="10000" value="0">
+      </div>
+      <div class="timeline-ticks" id="timeline-ticks-container">
+        <!-- Dynamic phase labels at specific positions -->
+      </div>
+    </div>
+
+    <!-- Visibility Toggles -->
+    <div class="playback-toggles-row">
+      <label class="checkbox-container">
+        <input type="checkbox" id="check-outbound" checked>
+        <span class="checkbox-custom"></span>
+        Show outbound arc
+      </label>
+      <label class="checkbox-container">
+        <input type="checkbox" id="check-inbound" checked>
+        <span class="checkbox-custom"></span>
+        Show inbound arc
+      </label>
+      <label class="checkbox-container">
+        <input type="checkbox" id="check-labels" checked>
+        <span class="checkbox-custom"></span>
+        Show labels
+      </label>
+      <label class="checkbox-container">
+        <input type="checkbox" id="check-trails" checked>
+        <span class="checkbox-custom"></span>
+        Show trajectory trails
+      </label>
+      <label class="checkbox-container">
+        <input type="checkbox" id="check-orbit-guides" checked>
+        <span class="checkbox-custom"></span>
+        Show orbit guides
+      </label>
+    </div>
+  </footer>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

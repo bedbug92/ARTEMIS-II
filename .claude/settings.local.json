@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem *)",
+      "Bash(npm install *)",
+      "Bash(npx vite *)",
+      "Bash(Start-Sleep -Seconds 3)",
+      "Bash(Get-Content \"C:\\\\Users\\\\gaoxing\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\E--GITHUB-Anti-gravity-Project-Artemis-II----------\\\\f51d8c70-e523-4e9e-ad70-672452e365c0\\\\tasks\\\\b5e1r32mz.output\")",
+      "WebFetch(domain:localhost)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(curl *)"
+    ]
+  }
+}
